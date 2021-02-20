@@ -1,62 +1,77 @@
-import os
 import numpy as np
 from pandas import read_csv
 from datetime import datetime
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
+
+import nltk
 from nltk.corpus import wordnet
+from nltk.stem import WordNetLemmatizer
 
-import stanza
 
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
-# stanza.download('en')
+lemmatizer = WordNetLemmatizer()
 
+opinion_words = set(read_csv(
+    'data/SentiWordNet_3.0.0.txt', comment='#', sep='\t', header=None)[4].tolist())
+
+
+class Document:
+    def __init__(self, raw):
+        self.sentences = [Sentence(sent) for sent in nltk.sent_tokenize(raw)]
 
 
 class Sentence:
-    def __init__(self, words):
-        self.words = words
+    def __init__(self, sentence):
+        self.words = [Word(word) for word in nltk.word_tokenize(sentence)]
         self.topic = None
         self.sentiment = None
+        # categorization
+        for i, word in enumerate(self.words):
+            if word.part == 'n' and i > 0 and self.words[i - 1].part == 'n':
+                # consecutive nouns
+                word.category = 1
+                self.words[i - 1].category = 1
+            elif word.lemma in opinion_words:
+                word.category = 2
+            else:
+                word.category = 0
 
 
 class Word:
-    def __init__(self, lemmatized):
-        self.word = lemmatized
-        self.part = wordnet.synsets(w)[0].pos()
+    def __init__(self, word):
+        self.lemma = lemmatizer.lemmatize(word)
+        self.part = wordnet.synsets(self.lemma)[0].pos()
         self.category = None
 
 
 class TSLDAData:
     def __init__(self):
-        self._historical = read_csv('data/historical.csv')
-        self._message = read_csv('data/message.csv', header=None)
+        self._prices = read_csv('data/historical.csv')
+        self._messages = read_csv('data/message.csv', header=None)
         self.opinion_words = read_csv('data/SentiWordNet_3.0.0.txt', comment='#', sep='\t', header=None)
-        self.lemmatization = stanza.Pipeline(lang='en', processors='tokenize,mwt,lemma,pos')  # lemmatization
-        self.message = OrderedDict()
-        self.historical = OrderedDict()
+        self.all_messages = defaultdict(lambda: list())
+        self.messages = list()
+        self.prices = list()
         self.preprocess()
 
     def preprocess(self):
-        self._historical = self._historical.sort_index(ascending=False)  # in the order of time
-        last_day = None
-        for i, historical in self._historical.iterrows():
-            if not last_day:
-                last_day = historical['Adj Close']
-            else:
-                date = datetime.strptime(historical['Date'], '%Y-%m-%d')
-                adj_close = historical['Adj Close']  # the adjusted close prices
-                self.historical[date] = int(adj_close < last_day)
-                last_day = adj_close
-        for i, (date, msg) in self._message.iterrows():
+        for i, (date, msg) in self._messages.iterrows():
             date = datetime.strptime(date, '%Y-%m-%d')
-            if date in self.historical:  # only store messages on transaction days
-                msg = msg.strip('.')  # remove stop words
-                if date not in self.message:
-                    self.message[date] = []
-                self.message[date].append(self.lemmatization(msg))
+            self.all_messages[date].append(Document(msg))
+
+        self._prices = self._prices.sort_index(ascending=False)  # in the order of time
+        last_day = None
+        for i, p in self._prices.iterrows():
+            if not last_day:
+                last_day = p['Adj Close']
+            else:
+                date = datetime.strptime(p['Date'], '%Y-%m-%d')
+                adj_close = p['Adj Close']  # the adjusted close prices
+                self.prices.append(int(adj_close < last_day))
+                self.messages.append(self.all_messages[date])
+                last_day = adj_close
 
     def __call__(self):
-        return list(self.historical.values()), list(self.message.values())
+        return self.messages, self.prices
 
 
 tslda_data = TSLDAData()
