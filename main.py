@@ -12,7 +12,7 @@ def parse_args():
     parser.add_argument('-a', '--alpha', type=float, default=0.1, help='Dirichlet prior vectors.')
     parser.add_argument('-b', '--beta', type=float, default=0.01, help='Dirichlet prior vectors.')
     parser.add_argument('-g', '--gamma', type=float, default=0.01, help='Dirichlet prior vectors.')
-    parser.add_argument('-l', '--lambda', type=float, default=0.1, help='Dirichlet prior vectors.')
+    parser.add_argument('-l', '--lam', type=float, default=0.1, help='Dirichlet prior vectors.')
     parser.add_argument('-p', '--test-proportion', type=float, default=0.2, help='Proportion of test set')
     return parser.parse_args()
 
@@ -25,12 +25,12 @@ def main():
 
     # prepare data for classification training
     n = len(messages)
-    n_train = n - n * args.test_proportion
+    n_train = n - int(n * args.test_proportion)
     clf = svm.SVC()
     X, y = [], []
     for t in range(2, n):
         price_feature = np.concatenate([np.eye(2)[prices[t-1]], np.eye(2)[prices[t-2]]])
-        tslda_feature = np.concatenate([tslda(documents[t]), tslda(documents[t-1])])
+        tslda_feature = np.concatenate([tslda(messages[t]), tslda(messages[t-1])])
         X.append(np.concatenate([price_feature, tslda_feature]))
         y.append(prices[t])
 

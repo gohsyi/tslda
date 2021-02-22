@@ -16,12 +16,14 @@ opinion_words = set(read_csv(
 
 class Document:
     def __init__(self, raw):
-        self.sentences = [Sentence(sent) for sent in nltk.sent_tokenize(raw)]
+        self.sentences = [Sentence(sent.strip('.')) for sent in nltk.sent_tokenize(raw)]
 
 
 class Sentence:
     def __init__(self, sentence):
         self.words = [Word(word) for word in nltk.word_tokenize(sentence)]
+        self.wordset = set()
+        self.wordcalc = [defaultdict(lambda: 0) for _ in range(3)]
         self.topic = None
         self.sentiment = None
         # categorization
@@ -34,12 +36,17 @@ class Sentence:
                 word.category = 2
             else:
                 word.category = 0
+        # construct word sets
+        for word in self.words:
+            self.wordset.add(word.lemma)  # for V_{d,m}
+            self.wordcalc[word.category][word.lemma] += 1  # for W^{*,*}_{d,m,v,c}
 
 
 class Word:
     def __init__(self, word):
         self.lemma = lemmatizer.lemmatize(word)
-        self.part = wordnet.synsets(self.lemma)[0].pos()
+        synsets = wordnet.synsets(self.lemma)
+        self.part = synsets[0].pos() if len(synsets) > 0 else None
         self.category = None
 
 
