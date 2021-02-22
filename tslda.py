@@ -51,7 +51,7 @@ class TSLDA:
                         den1 = np.prod([
                             sum(sum(self.counter[a][b_][1].values()) for b_ in range(self.n_sentiments))
                             - int(sent.topic == a) * sum(sent.wordcalc[1].values())
-                            + self.alpha + j
+                            + self.n_words * (self.alpha + j)
                             for j in range(sum(sent.wordcalc[1].values()))])
                         num2 = np.prod([
                             np.prod([
@@ -62,7 +62,7 @@ class TSLDA:
                             ]) for key in sent.wordset])
                         den2 = np.prod([
                             sum(self.counter[a][b][2].values())
-                            + self.lam + j
+                            + self.n_words * (self.lam + j)
                             for j in range(sum(sent.wordcalc[2].values()))])
                         p[a, b] = (Za + self.beta) * (Zb + self.gamma) * num1 / den1 * num2 / den2
                 if sent.topic is not None:
