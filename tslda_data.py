@@ -52,8 +52,8 @@ class Word:
 
 class TSLDAData:
     def __init__(self):
-        self._prices = read_csv('data/historical.csv')
-        self._messages = read_csv('data/message.csv', header=None)
+        self._prices = read_csv('data/dummy_price.csv')
+        self._messages = read_csv('data/dummy_message.csv')
         self.opinion_words = read_csv('data/SentiWordNet_3.0.0.txt', comment='#', sep='\t', header=None)
         self.all_messages = defaultdict(lambda: list())
         self.messages = list()
@@ -62,7 +62,7 @@ class TSLDAData:
 
     def preprocess(self):
         for i, (date, msg) in self._messages.iterrows():
-            date = datetime.strptime(date, '%Y-%m-%d')
+            date = datetime.fromisoformat(date)
             self.all_messages[date].append(Document(msg))
 
         self._prices = self._prices.sort_index(ascending=False)  # in the order of time
@@ -71,7 +71,7 @@ class TSLDAData:
             if not last_day:
                 last_day = p['Adj Close']
             else:
-                date = datetime.strptime(p['Date'], '%Y-%m-%d')
+                date = datetime.fromisoformat(p['Date'])
                 adj_close = p['Adj Close']  # the adjusted close prices
                 self.prices.append(int(adj_close < last_day))
                 self.messages.append(self.all_messages[date])
