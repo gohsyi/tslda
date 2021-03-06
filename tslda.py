@@ -4,7 +4,7 @@ import numpy as np
 
 
 class TSLDA:
-    def __init__(self, documents, alpha, beta, gamma, lam, K, S=3):
+    def __init__(self, documents, alpha, beta, gamma, lam, T, K, S=3):
         self.documents = documents
         self.alpha = alpha
         self.beta = beta
@@ -19,7 +19,7 @@ class TSLDA:
         self.group_by_topic = np.zeros(self.n_topics)
         self.group_by_sentiment = np.zeros(self.n_sentiments)
         self.n_words = self.calc_num_words()
-        self.pretrain()
+        self.pretrain(T)
 
     def calc_num_words(self):
         wordset = set()
@@ -28,8 +28,8 @@ class TSLDA:
                 wordset.update(sent.wordset)
         return len(wordset)
 
-    def pretrain(self):
-        for _ in trange(10):
+    def pretrain(self, T):
+        for _ in trange(T):
             self.gibbs_sampling()
 
     def gibbs_sampling(self):
